@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Flask Entra ID Auth → FastMCP Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/es/highlight.min.js"></script>
+    <!-- Mermaid.js for diagram rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="main-card">
+            <div class="header-section">
+                <h1 class="mb-0"><i class="bi bi-shield-lock"></i> Flask Entra ID Auth → FastMCP Demo</h1>
+                <p class="mb-0 mt-2">Entra ID Authentication with Delegated Access Tokens</p>
+                
+                {% if user %}
+                <div class="user-info">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-1"><i class="bi bi-person-circle"></i> {{ user.get("name") }}</h5>
+                            <small><i class="bi bi-fingerprint"></i> OID: {{ user.get("oid") }}</small>
+                        </div>
+                        <div>
+                            <a href="{{ url_for('identity.logout') }}" class="btn btn-custom">
+                                <i class="bi bi-box-arrow-right"></i> ログアウト
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="user-info">
+                    <p class="mb-0"><i class="bi bi-exclamation-circle"></i> ユーザーがログインしていません</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if user %}
+            <div class="p-4">
+                <ul class="nav nav-tabs" id="debugTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="chat-tab" data-bs-toggle="tab" 
+                                data-bs-target="#chat-interface" type="button" role="tab">
+                            <i class="bi bi-chat-dots"></i> AIチャット
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="login-tab" data-bs-toggle="tab" 
+                                data-bs-target="#login-token" type="button" role="tab">
+                            <i class="bi bi-key"></i> ログイントークン (Graph API)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="obo-tab" data-bs-toggle="tab" 
+                                data-bs-target="#obo-token" type="button" role="tab">
+                            <i class="bi bi-arrow-left-right"></i> 委任アクセストークン (MCP Tools)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="aisearch-tab" data-bs-toggle="tab" 
+                                data-bs-target="#aisearch-token" type="button" role="tab">
+                            <i class="bi bi-search"></i> OBO(On-Behalf-Of) トークン
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="debugTabContent">
+                    <div class="tab-pane fade show active" id="chat-interface" role="tabpanel">
+                        <h5 class="mb-3"><i class="bi bi-robot"></i> Azure OpenAI Chat Agent</h5>
+                        <p class="text-muted">Microsoft Agent Frameworkを使用したAIチャットアシスタント</p>
+                        
+                        <div class="chat-container" style="height: 500px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin-bottom: 20px; background-color: #f8f9fa;">
+                            <div id="chat-messages">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i> チャットを開始してください。Azure OpenAI Agent Frameworkが応答します。
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="streaming-toggle" checked>
+                                <label class="form-check-label" for="streaming-toggle">
+                                    <i class="bi bi-lightning-charge"></i> ストリーミングモード
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <input type="text" id="chat-input" class="form-control" placeholder="メッセージを入力..." 
+                                   onkeypress="if(event.keyCode==13) sendMessage()">
+                            <button class="btn btn-primary" type="button" onclick="sendMessage()">
+                                <i class="bi bi-send"></i> 送信
+                            </button>
+                        </div>
+                        
+                        <div id="chat-error" class="alert alert-danger mt-3" style="display: none;"></div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="login-token" role="tabpanel">
+                        <h5 class="mb-3"><i class="bi bi-info-circle"></i> ログイン時に取得したトークン情報</h5>
+                        <p class="text-muted">このトークンはMicrosoft Graph APIへのアクセスに使用されます</p>
+                        {% if token_debug %}
+                        <pre>{{ token_debug }}</pre>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> ログイントークン情報を読み込み中...
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="tab-pane fade" id="obo-token" role="tabpanel">
+                        <h5 class="mb-3"><i class="bi bi-arrow-repeat"></i> 委任アクセストークン</h5>
+                        <p class="text-muted">このトークンはチャット時に認証が必要なMCPツールで使用されます</p>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> チャットで認証が必要なMCPツールが呼ばれると委任アクセストークンが表示されます
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="aisearch-token" role="tabpanel">
+                        <h5 class="mb-3"><i class="bi bi-search"></i> Azure AI Search Token</h5>
+                        <p class="text-muted">ダウンストリーム API（例：Azure AI Search）用のOBOトークン情報を取得・表示します</p>
+                        
+                        <div class="mb-3">
+                            <button class="btn btn-primary" onclick="getAISearchToken()">
+                                <i class="bi bi-download"></i> AI Search トークンを取得
+                            </button>
+                        </div>
+                        
+                        <div id="aisearch-loading" class="alert alert-info" style="display: none;">
+                            <i class="bi bi-hourglass-split"></i> トークンを取得中...
+                        </div>
+                        
+                        <div id="aisearch-error" class="alert alert-danger" style="display: none;"></div>
+                        
+                        <div id="aisearch-content" style="display: none;">
+                            <h6 class="mt-3"><i class="bi bi-info-circle"></i> トークン情報</h6>
+                            <pre id="aisearch-token-info"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Mermaid.js の初期化 - エラー表示を抑制
+        mermaid.initialize({ 
+            startOnLoad: false,
+            theme: 'default',
+            securityLevel: 'loose',
+            suppressErrors: true, // エラーメッセージを抑制
+            logLevel: 'error', // ログレベルをエラーのみに
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true
+            }
+        });
+        
+        // Marked.js の設定
+        marked.setOptions({
+            highlight: function(code, lang) {
+                // Mermaid図の場合は特別処理
+                if (lang === 'mermaid') {
+                    return code; // Mermaidコードはそのまま返す
+                }
+                
+                if (lang && hljs.getLanguage(lang)) {
+                    try {
+                        return hljs.highlight(code, { language: lang }).value;
+                    } catch (err) {}
+                }
+                return hljs.highlightAuto(code).value;
+            },
+            breaks: true,
+            gfm: true
+        });
+        
+        // Mermaid図をレンダリングする関数
+        async function renderMermaidDiagrams(element) {
+            const mermaidBlocks = element.querySelectorAll('pre code.language-mermaid');
+            
+            for (const block of mermaidBlocks) {
+                // 既にレンダリング済みかチェック
+                if (block.dataset.mermaidRendered === 'true') {
+                    continue;
+                }
+                
+                const pre = block.parentElement;
+                const mermaidCode = block.textContent;
+                
+                // Mermaidコードが完全かチェック（最低限の検証）
+                if (!isMermaidCodeComplete(mermaidCode)) {
+                    console.log('Mermaid code incomplete, skipping render');
+                    continue;
+                }
+                
+                try {
+                    // ユニークなIDを生成
+                    const id = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                    
+                    // Mermaid図をレンダリング
+                    const { svg } = await mermaid.render(id, mermaidCode);
+                    
+                    // preタグをMermaid図のdivに置き換え
+                    const mermaidDiv = document.createElement('div');
+                    mermaidDiv.className = 'mermaid-diagram';
+                    mermaidDiv.innerHTML = svg;
+                    pre.replaceWith(mermaidDiv);
+                    
+                    console.log('Mermaid diagram rendered successfully');
+                } catch (error) {
+                    console.error('Mermaid rendering error (suppressed):', error.message);
+                    // エラー時はレンダリング済みマークを付けて再試行を防ぐ
+                    block.dataset.mermaidRendered = 'error';
+                    // エラー時は通常のコードブロックとして表示
+                    block.classList.remove('language-mermaid');
+                    block.classList.add('language-text');
+                    // Highlight.jsで再ハイライト
+                    hljs.highlightElement(block);
+                    
+                    // エラーメッセージのdivが追加されていたら削除
+                    const errorDivs = document.querySelectorAll('.mermaid-error, div[id^="dmermaid-"]');
+                    errorDivs.forEach(div => {
+                        if (div.textContent.includes('Syntax error')) {
+                            div.remove();
+                        }
+                    });
+                }
+            }
+        }
+        
+        // Mermaidコードが完全かどうかをチェック
+        function isMermaidCodeComplete(code) {
+            const trimmed = code.trim();
+            
+            // 空の場合は不完全
+            if (!trimmed) {
+                return false;
+            }
+            
+            // Mermaid図のタイプを検出
+            const mermaidTypes = [
+                'graph', 'flowchart', 'sequenceDiagram', 'classDiagram',
+                'stateDiagram', 'erDiagram', 'gantt', 'pie', 'gitGraph',
+                'journey', 'quadrantChart', 'requirementDiagram', 'timeline'
+            ];
+            
+            const hasValidStart = mermaidTypes.some(type => 
+                trimmed.startsWith(type) || trimmed.includes(type + ' ')
+            );
+            
+            if (!hasValidStart) {
+                return false;
+            }
+            
+            // 基本的な構造チェック（最低限の行数）
+            const lines = trimmed.split('\n').filter(line => line.trim());
+            if (lines.length < 2) {
+                return false;
+            }
+            
+            // グラフの場合、矢印や接続が少なくとも1つあるか
+            if (trimmed.startsWith('graph') || trimmed.startsWith('flowchart')) {
+                const hasConnections = /--\>|\-\>|\-\-\-|\-\.\-\>/.test(trimmed);
+                if (!hasConnections && lines.length < 3) {
+                    return false;
+                }
+            }
+            
+            // シーケンス図の場合、participantまたは矢印があるか
+            if (trimmed.includes('sequenceDiagram')) {
+                const hasElements = /participant|\-\>\>|\-\-\>\>|\-\>|\-\-\>/.test(trimmed);
+                if (!hasElements && lines.length < 3) {
+                    return false;
+                }
+            }
+            
+            return true;
+        }
+        
+        function addMessage(content, isUser, messageId = null, isStreaming = true) {
+            const messagesDiv = document.getElementById('chat-messages');
+            const chatContainer = messagesDiv.parentElement; // スクロール対象のコンテナ
+            
+            // 既存のメッセージを更新
+            if (messageId) {
+                const existingMessage = document.getElementById(messageId);
+                if (existingMessage) {
+                    const contentElement = existingMessage.querySelector('.message-content');
+                    if (contentElement) {
+                        if (isUser) {
+                            // ユーザーメッセージはプレーンテキスト
+                            contentElement.innerHTML = escapeHtml(content);
+                        } else {
+                            // AIメッセージはMarkdownとして変換
+                            contentElement.innerHTML = marked.parse(content);
+                            // コードブロックにシンタックスハイライトを適用
+                            contentElement.querySelectorAll('pre code').forEach((block) => {
+                                if (!block.classList.contains('language-mermaid')) {
+                                    hljs.highlightElement(block);
+                                }
+                            });
+                            // Mermaid図は完了時のみレンダリング
+                            if (!isStreaming) {
+                                console.log('Rendering Mermaid diagrams (streaming complete)');
+                                renderMermaidDiagrams(contentElement);
+                            }
+                        }
+                        // スクロールを最下部に移動
+                        setTimeout(() => {
+                            chatContainer.scrollTop = chatContainer.scrollHeight;
+                        }, 10);
+                        return messageId;
+                    }
+                }
+            }
+            
+            // 新しいメッセージを追加
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'mb-3';
+            const newMessageId = messageId || `msg-${Date.now()}`;
+            messageDiv.id = newMessageId;
+            
+            if (isUser) {
+                messageDiv.innerHTML = `
+                    <div class="d-flex justify-content-end">
+                        <div class="card" style="max-width: 70%; background-color: #007bff; color: white;">
+                            <div class="card-body">
+                                <strong><i class="bi bi-person-fill"></i> あなた</strong>
+                                <div class="mb-0 mt-2 message-content">${escapeHtml(content)}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // AIメッセージはMarkdownとして変換
+                const markdownHtml = marked.parse(content);
+                messageDiv.innerHTML = `
+                    <div class="d-flex justify-content-start">
+                        <div class="card markdown-content" style="max-width: 70%; background-color: #e9ecef;">
+                            <div class="card-body">
+                                <strong><i class="bi bi-robot"></i> AIアシスタント</strong>
+                                <div class="mb-0 mt-2 message-content">${markdownHtml}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            messagesDiv.appendChild(messageDiv);
+            
+            // コードブロックにシンタックスハイライトを適用
+            if (!isUser) {
+                const contentElement = messageDiv.querySelector('.message-content');
+                contentElement.querySelectorAll('pre code').forEach((block) => {
+                    if (!block.classList.contains('language-mermaid')) {
+                        hljs.highlightElement(block);
+                    }
+                });
+                // Mermaid図は完了時のみレンダリング
+                if (!isStreaming) {
+                    console.log('Rendering Mermaid diagrams (new message, streaming complete)');
+                    renderMermaidDiagrams(contentElement);
+                }
+            }
+            
+            // スクロールを最下部に移動
+            setTimeout(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }, 10);
+            return newMessageId;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML.replace(/\n/g, '<br>');
+        }
+        
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const errorDiv = document.getElementById('chat-error');
+            const streamingToggle = document.getElementById('streaming-toggle');
+            const useStreaming = streamingToggle.checked;
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // ユーザーメッセージを追加
+            addMessage(message, true);
+            input.value = '';
+            errorDiv.style.display = 'none';
+            
+            // 送信中メッセージ
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = 'loading-message';
+            loadingDiv.className = 'mb-3';
+            loadingDiv.innerHTML = `
+                <div class="d-flex justify-content-start">
+                    <div class="card" style="max-width: 70%; background-color: #e9ecef;">
+                        <div class="card-body">
+                            <i class="bi bi-three-dots"></i> 考え中...
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('chat-messages').appendChild(loadingDiv);
+            
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message, stream: useStreaming })
+                });
+                
+                // ローディングメッセージを削除
+                loadingDiv.remove();
+                
+                if (!response.ok) {
+                    const data = await response.json();
+                    errorDiv.textContent = data.error || 'エラーが発生しました';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                if (useStreaming) {
+                    // ストリーミングモード
+                    await handleStreamingResponse(response, errorDiv);
+                } else {
+                    // 非ストリーミングモード
+                    await handleNonStreamingResponse(response, errorDiv);
+                }
+                
+            } catch (error) {
+                loadingDiv.remove();
+                errorDiv.textContent = 'ネットワークエラー: ' + error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+        
+        async function handleStreamingResponse(response, errorDiv) {
+            // Transfer-Encoding: chunked でストリーミング受信
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let accumulatedText = '';
+            let aiMessageId = null;
+            let chunkCount = 0;
+            let isDone = false;
+            let buffer = ''; // 不完全なJSONを保持するバッファ
+            
+            console.log('Starting stream...');
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    console.log('Stream ended by reader. Total chunks received:', chunkCount);
+                    break;
+                }
+                
+                const chunk = decoder.decode(value, { stream: true });
+                buffer += chunk;
+                const lines = buffer.split('\n');
+                
+                // 最後の行は不完全な可能性があるので保持
+                buffer = lines.pop() || '';
+                
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) continue;
+                    
+                    try {
+                        const data = JSON.parse(trimmedLine);
+                        
+                        if (data.error) {
+                            console.error('Error from server:', data.error);
+                            errorDiv.textContent = data.error;
+                            errorDiv.style.display = 'block';
+                            isDone = true;
+                            break;
+                        }
+                        
+                        // 委任アクセストークン情報を受信した場合、タブに表示
+                        if (data.obo_token) {
+                            console.log('Received delegated token info');
+                            displayOboToken(data.obo_token);
+                        }
+                        
+                        if (data.chunk) {
+                            chunkCount++;
+                            accumulatedText += data.chunk;
+                            // ストリーミング中はisStreaming=trueでMermaidレンダリングをスキップ
+                            aiMessageId = addMessage(accumulatedText, false, aiMessageId, true);
+                        }
+                        
+                        if (data.done) {
+                            console.log('Received done signal. Total chunks:', chunkCount);
+                            // ストリーミング完了時にMermaid図をレンダリング
+                            if (aiMessageId) {
+                                console.log('Updating final message with Mermaid rendering');
+                                addMessage(accumulatedText, false, aiMessageId, false);
+                            }
+                            isDone = true;
+                            break;
+                        }
+                    } catch (e) {
+                        console.error('JSON parse error:', e, 'Line:', trimmedLine);
+                    }
+                }
+                
+                // doneフラグが立った場合は外側のループも抜ける
+                if (isDone) {
+                    break;
+                }
+            }
+            
+            console.log('Stream processing complete. Final text length:', accumulatedText.length);
+        }
+        
+        async function handleNonStreamingResponse(response, errorDiv) {
+            try {
+                const data = await response.json();
+                
+                if (data.error) {
+                    errorDiv.textContent = data.error;
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                // 委任アクセストークン情報を受信した場合、タブに表示
+                if (data.obo_token) {
+                    console.log('Received delegated token info');
+                    displayOboToken(data.obo_token);
+                }
+                
+                // 非ストリーミングモードではresponseフィールドに全文が入っている
+                if (data.response) {
+                    console.log('Non-streaming response received:', data.response.substring(0, 100));
+                    addMessage(data.response, false, null, false);
+                } else {
+                    errorDiv.textContent = 'レスポンスが空です';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('JSON parse error:', error);
+                errorDiv.textContent = 'レスポンスの解析に失敗しました: ' + error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+        
+        // 委任アクセストークン情報をタブに表示する関数
+        function displayOboToken(oboTokenInfo) {
+            const oboTab = document.getElementById('obo-token');
+            if (!oboTab) {
+                console.error('Delegated token tab not found');
+                return;
+            }
+            
+            // トークン情報を整形して表示
+            let displayText = '=== Delegated Token (Raw) ===\n';
+            displayText += `Token: ${oboTokenInfo.raw}\n\n`;
+            displayText += '=== Delegated Token (Decoded) ===\n';
+            displayText += '認証が必要なMCPツール使用時に取得された委任アクセストークン:\n';
+            displayText += JSON.stringify(oboTokenInfo.decoded, null, 2);
+            
+            // タブの内容を更新
+            oboTab.innerHTML = `
+                <h5 class="mb-3"><i class="bi bi-arrow-repeat"></i> 委任アクセストークン</h5>
+                <p class="text-muted">このトークンはチャット時に認証が必要なMCPツールで使用されました</p>
+                <pre>${displayText}</pre>
+            `;
+            
+            // OBOタブにバッジを追加して更新を通知
+            const oboTabButton = document.getElementById('obo-tab');
+            if (oboTabButton && !oboTabButton.querySelector('.badge')) {
+                const badge = document.createElement('span');
+                badge.className = 'badge bg-success ms-2';
+                badge.textContent = '更新';
+                oboTabButton.appendChild(badge);
+                
+                // 5秒後にバッジを削除
+                setTimeout(() => {
+                    badge.remove();
+                }, 5000);
+            }
+        }
+        
+        // AI Search トークンを取得して表示
+        async function getAISearchToken() {
+            const loadingDiv = document.getElementById('aisearch-loading');
+            const errorDiv = document.getElementById('aisearch-error');
+            const contentDiv = document.getElementById('aisearch-content');
+            const tokenInfoPre = document.getElementById('aisearch-token-info');
+            
+            // UIリセット
+            loadingDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+            contentDiv.style.display = 'none';
+            
+            console.log('='.repeat(80));
+            console.log('Azure AI Search Token Request');
+            console.log('='.repeat(80));
+            
+            try {
+                const response = await fetch('/api/get-aisearch-token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                loadingDiv.style.display = 'none';
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // コンソールに出力
+                console.log('✅ Token retrieved successfully');
+                console.log('Token Data:', data);
+                console.log('='.repeat(80));
+                
+                if (data.error) {
+                    errorDiv.textContent = `エラー: ${data.error}`;
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                // 委任アクセストークン(OBOトークン)情報を表示
+                if (data.obo_token) {
+                    console.log('Displaying delegated token used for AI Search token request');
+                    displayOboToken(data.obo_token);
+                }
+                
+                // トークン情報を既存フォーマットに合わせて整形
+                let displayText = '';
+                
+                // data.token_result は list[Contents] の変換結果: [{"type": "text", "content": "..."}]
+                const tokenResult = data.token_result || data;
+                if (Array.isArray(tokenResult) && tokenResult.length > 0) {
+                    for (const item of tokenResult) {
+                        if (item.type === 'text' && item.content) {
+                            // JSONテキストをパースして整形
+                            try {
+                                const tokenData = JSON.parse(item.content);
+                                
+                                // displayText += '=== AI Search Token (Raw) ===\n';
+                                // displayText += `Token: ${tokenData.access_token ? tokenData.access_token.substring(0, 50) + '... (先頭50文字のみ表示)' : 'N/A'}\n\n`;
+                                displayText += '=== AI Search Token (Decoded) ===\n';
+                                displayText += 'Azure AI Search用の委任トークン:\n';
+                                displayText += JSON.stringify(tokenData, null, 2);
+                            } catch (e) {
+                                // JSONパースできない場合はそのまま表示
+                                displayText += item.content;
+                            }
+                        } else {
+                            // その他のタイプはそのまま表示
+                            displayText += JSON.stringify(item, null, 2);
+                        }
+                    }
+                } else {
+                    displayText = JSON.stringify(tokenResult, null, 2);
+                }
+                
+                // 画面に表示
+                tokenInfoPre.textContent = displayText;
+                contentDiv.style.display = 'block';
+                
+                // 成功メッセージ
+                console.log('✅ トークン情報を画面とコンソールに出力しました');
+                
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                errorDiv.textContent = `エラー: ${error.message}`;
+                errorDiv.style.display = 'block';
+                
+                console.error('❌ Error:', error);
+                console.log('='.repeat(80));
+            }
+        }
+    </script>
+</body>
+</html>

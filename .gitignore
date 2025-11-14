@@ -205,3 +205,11 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+.DS_Store
+
+# Flask session files
+flask_session/
+
+# VS Code settings with secrets
+.vscode/settings.json

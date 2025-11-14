@@ -1,0 +1,368 @@
+body { 
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 1200px;
+}
+
+.main-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.main-card .p-4 {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.tab-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.tab-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.tab-pane pre {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.header-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+}
+
+.user-info {
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.btn-custom {
+    background: white;
+    color: #667eea;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-custom:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.btn-api-call {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 15px 35px;
+    border-radius: 25px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: all 0.3s;
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-api-call:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+    color: white;
+}
+
+.nav-tabs .nav-link {
+    color: #667eea;
+    border: none;
+    padding: 15px 25px;
+    font-weight: 600;
+}
+
+.nav-tabs .nav-link.active {
+    color: white;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px 10px 0 0;
+}
+
+.tab-content {
+    padding: 25px;
+    background: #f8f9fa;
+}
+
+/* ターミナル風のデザイン */
+pre {
+    background: #0d1117;
+    color: #00ff00;
+    font-family: 'Courier New', Consolas, monospace;
+    padding: 20px;
+    border-radius: 10px;
+    overflow-x: auto;
+    max-height: 800px;
+    border: 2px solid #30363d;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
+    position: relative;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+pre::before {
+    content: '● ● ●';
+    position: absolute;
+    top: 10px;
+    left: 15px;
+    color: #30363d;
+    font-size: 8px;
+    letter-spacing: 3px;
+}
+
+pre {
+    padding-top: 35px;
+}
+
+/* APIレスポンス用のターミナル（別スタイル） */
+.api-result-success {
+    background: #d4edda;
+    border-left: 4px solid #28a745;
+    padding: 20px;
+    border-radius: 5px;
+    margin-top: 20px;
+}
+
+.api-result-success pre {
+    background: #0d1117;
+    color: #00ff00;
+    padding: 20px;
+    border-radius: 5px;
+    margin: 0;
+    border: 2px solid #28a745;
+    box-shadow: 0 0 20px rgba(40, 167, 69, 0.2);
+}
+
+.badge-custom {
+    background: rgba(102, 126, 234, 0.2);
+    color: #667eea;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+/* チャットUI用のスタイル */
+.chat-container {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+#chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chat-container .card {
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 15px;
+    transition: transform 0.2s;
+}
+
+.chat-container .card:hover {
+    transform: translateY(-2px);
+}
+
+.message-content {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    animation: fadeIn 0.3s ease-in;
+}
+
+/* Markdownコンテンツ用のスタイル */
+.markdown-content .message-content {
+    white-space: normal;
+}
+
+.markdown-content .message-content h1,
+.markdown-content .message-content h2,
+.markdown-content .message-content h3,
+.markdown-content .message-content h4,
+.markdown-content .message-content h5,
+.markdown-content .message-content h6 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #2d2d2d;
+}
+
+.markdown-content .message-content h1 { font-size: 1.5rem; }
+.markdown-content .message-content h2 { font-size: 1.3rem; }
+.markdown-content .message-content h3 { font-size: 1.1rem; }
+
+.markdown-content .message-content p {
+    margin-bottom: 0.75rem;
+}
+
+.markdown-content .message-content ul,
+.markdown-content .message-content ol {
+    margin-bottom: 0.75rem;
+    padding-left: 1.5rem;
+}
+
+.markdown-content .message-content li {
+    margin-bottom: 0.25rem;
+}
+
+.markdown-content .message-content code {
+    background-color: #f4f4f4;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #e83e8c;
+}
+
+.markdown-content .message-content pre {
+    background-color: #0d1117;
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 0.75rem 0;
+}
+
+.markdown-content .message-content pre code {
+    background-color: transparent;
+    padding: 0;
+    color: inherit;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
+.markdown-content .message-content blockquote {
+    border-left: 4px solid #667eea;
+    padding-left: 1rem;
+    margin: 0.75rem 0;
+    color: #666;
+    font-style: italic;
+}
+
+.markdown-content .message-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.75rem 0;
+}
+
+.markdown-content .message-content table th,
+.markdown-content .message-content table td {
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    text-align: left;
+}
+
+.markdown-content .message-content table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.markdown-content .message-content a {
+    color: #667eea;
+    text-decoration: none;
+}
+
+.markdown-content .message-content a:hover {
+    text-decoration: underline;
+}
+
+.markdown-content .message-content strong {
+    font-weight: 600;
+    color: #2d2d2d;
+}
+
+.markdown-content .message-content em {
+    font-style: italic;
+}
+
+.markdown-content .message-content hr {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 1rem 0;
+}
+
+/* Mermaid図用のスタイル */
+.mermaid-diagram {
+    background-color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 0.75rem 0;
+    overflow-x: auto;
+    text-align: center;
+}
+
+.mermaid-diagram svg {
+    max-width: 100%;
+    height: auto;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0.5;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* ストリーミング中のアニメーション */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.streaming-indicator {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+#chat-input {
+    border-radius: 25px 0 0 25px;
+    border: 2px solid #667eea;
+    padding: 12px 20px;
+}
+
+#chat-input:focus {
+    border-color: #764ba2;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.input-group .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 0 25px 25px 0;
+    padding: 12px 30px;
+    font-weight: 600;
+}
+
+.input-group .btn-primary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}

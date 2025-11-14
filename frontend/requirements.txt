@@ -1,0 +1,13 @@
+fastapi
+fastmcp
+uvicorn[standard]
+PyJWT
+requests
+python-dotenv
+Flask
+identity[flask]
+msal
+requests
+python-dotenv
+agent-framework
+azure-identity
